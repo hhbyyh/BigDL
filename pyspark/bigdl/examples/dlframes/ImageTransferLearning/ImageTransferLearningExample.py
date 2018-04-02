@@ -50,7 +50,7 @@ if __name__ == "__main__":
     labelDF = imageDF.withColumn("name", getName(col("image"))) \
         .withColumn("id", getID(col('name'))) \
         .withColumn("label", getLabel(col('name'))) \
-        .filter('id<1200')
+        .filter('id<22000')
 
     transformer = DLImageTransformer(
         Pipeline([Resize(256, 256), CenterCrop(224, 224),
@@ -64,8 +64,8 @@ if __name__ == "__main__":
         .withColumnRenamed('prediction', 'features') \
         .cache()
 
-    trainingDF = embeddingDF.filter('id<1000')
-    validationDF = embeddingDF.filter('id>1000 and id<1200')
+    trainingDF = embeddingDF.filter('id<20000')
+    validationDF = embeddingDF.filter('id>20000 and id<22000')
 
     lrModel = Sequential().add(Linear(1000, 2)).add(LogSoftMax())
     classifier = DLClassifier(lrModel, ClassNLLCriterion(), [1000]) \

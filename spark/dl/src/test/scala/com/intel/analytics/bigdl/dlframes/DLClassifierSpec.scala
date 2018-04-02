@@ -75,7 +75,7 @@ class DLClassifierSpec extends FlatSpec with Matchers with BeforeAndAfter {
     assert(estimator.getLearningRateDecay == 0)
   }
 
-  "DLClassifier" should "get reasonale accuracy" in {
+  "DLClassifier" should "get reasonable accuracy" in {
     val model = new Sequential().add(Linear[Float](6, 2)).add(LogSoftMax[Float])
     val criterion = ClassNLLCriterion[Float]()
     val classifier = new DLClassifier[Float](model, criterion, Array(6))
@@ -89,6 +89,26 @@ class DLClassifierSpec extends FlatSpec with Matchers with BeforeAndAfter {
     val dlModel = classifier.fit(df)
     dlModel.isInstanceOf[DLClassifierModel[_]] should be(true)
     assert(dlModel.transform(df).where("prediction=label").count() > nRecords * 0.8)
+  }
+
+  "DLClassifier" should "get reasonable accuracy for sigmoid" in {
+    val model = new Sequential().add(Linear[Float](6, 1)).add(Sigmoid[Float]())
+    val criterion = MSECriterion[Float]()
+    val classifier = new DLClassifier[Float](model, criterion, Array(6))
+      .setOptimMethod(new LBFGS[Float]())
+      .setLearningRate(0.1)
+      .setBatchSize(nRecords)
+      .setMaxEpoch(maxEpoch)
+    val data = sc.parallelize(smallData)
+    val toSigLabel = udf( (d: Double) => if (d != 1) 0.0 else 1.0)
+    val df = sqlContext.createDataFrame(data).toDF("features", "oldlabel")
+      .withColumn("label", toSigLabel(col("oldlabel")))
+    df.show()
+    val dlModel = classifier.fit(df)
+    dlModel.isInstanceOf[DLClassifierModel[_]] should be(true)
+    val accuracy = dlModel.transform(df)
+      .where("prediction=label").count().toDouble / nRecords
+    assert(accuracy >= 0.8)
   }
 
   "DLClassifier" should "support different FEATURE types" in {
